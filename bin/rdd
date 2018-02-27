@@ -15,6 +15,7 @@ hour_step = (1.to_f / 24)
 date_start = DateTime.new(2017, 3, 1, 12, 00)
 date_end =   DateTime.new(2017, 3, 1, 15, 00)
 
+
 date_start.step(date_end, hour_step).each do |d| 
   
   date_format = d.strftime('%F-%-k')
@@ -29,15 +30,23 @@ date_start.step(date_end, hour_step).each do |d|
     next unless ["PushEvent", "ForkEvent", "MemberEvent", "PullRequestEvent", "WatchEvent", "IssuesEvent"].include?(event_type)
     
     repo_name = event["repo"]["name"]
+    event_action = event["payload"]["action"]
     
     repos[repo_name] ||= 0
+    
+    repos[repo_name] += 10 if event_type == "PushEvent"
+    repos[repo_name] += 5  if event_type == "ForkEvent"
+    repos[repo_name] += 3  if event_type == "MemberEvent" && event_action == "added"
+    repos[repo_name] += 2  if event_type == "PullRequestEvent" && event_action == "closed" && event["payload"]["pull_request"]["merged"] == true
+    repos[repo_name] += 1  if event_type == "WatchEvent"
+    repos[repo_name] += 1  if event_type == "IssuesEvent" && event_action == "opened"
     
   end
 
 end
 
 puts repos.count
-puts repos.first(10)
+puts repos.sort_by { |k,v| v }.last(10).reverse
 
 
  
