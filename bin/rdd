@@ -5,30 +5,39 @@ require 'open-uri'
 require 'zlib'
 require 'yajl'
 require 'json'
-
-# CreateEvent - 10 points if its a new repo
-# ForkEvent - 5 points if a repo is forked
-# MemberEvent - 3 points when a repo has a member added
-# PullRequestEvent - 2 point when a pull request is closed & merged
-# WatchEvent - 1 point for the repo when the repo is watched
-# IssuesEvent - 1 points when the repo has an issue created
-
-gz = open('http://data.githubarchive.org/2017-01-01-12.json.gz')
-js = Zlib::GzipReader.new(gz).read
+require 'date'
+require 'time'
 
 repos = {}
 
-Yajl::Parser.parse(js) do |event|
+hour_step = (1.to_f / 24)
+
+date_start = DateTime.new(2017, 3, 1, 12, 00)
+date_end =   DateTime.new(2017, 3, 1, 15, 00)
+
+date_start.step(date_end, hour_step).each do |d| 
   
-  next unless ["PushEvent", "ForkEvent"].include?(event["type"])
-  
-  repo_name = event["repo"]["name"]
-  
-  repos[repo_name] ||= { points: 0 }
-  
+  date_format = d.strftime('%F-%-k')
+
+  gz = open( "http://data.githubarchive.org/#{date_format}.json.gz" )
+  js = Zlib::GzipReader.new(gz).read
+
+  Yajl::Parser.parse(js) do |event|
+    
+    event_type = event["type"]
+    
+    next unless ["PushEvent", "ForkEvent", "MemberEvent", "PullRequestEvent", "WatchEvent", "IssuesEvent"].include?(event_type)
+    
+    repo_name = event["repo"]["name"]
+    
+    repos[repo_name] ||= 0
+    
+  end
+
 end
 
-puts repos.first(5)
+puts repos.count
+puts repos.first(10)
 
 
  
