@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
+require 'optparse/time'
 require 'rubygems'
 require 'open-uri'
 require 'zlib'
@@ -8,16 +10,43 @@ require 'json'
 require 'date'
 require 'time'
 
+
+options = {}
+
+OptionParser.new do |parser|
+  
+  parser.banner = "Options:"
+
+  parser.on("-a", "--after [DATETIME]", Time, "# Date to start search at, ISO8601 or YYYY-MM-DD format") do |datetime|
+    @date_start = DateTime.parse(datetime.to_s)
+  end
+  
+  parser.on("-b", "--before [DATETIME]", Time, "# ISO8601 Date to end search at, ISO8601 or YYYY-MM-DD format") do |datetime|
+    @date_end = DateTime.parse(datetime.to_s)
+    
+  end
+  
+  parser.on("-t", "--top [INTEGER]", Integer, "# The number of repos to show") do |top|
+    @top = top
+  end
+  
+end.parse!
+
+
 repos = {}
 
 hour_step = (1.to_f / 24)
 
-date_start = DateTime.new(2017, 3, 1, 12, 00)
-date_end =   DateTime.new(2017, 3, 1, 15, 00)
+@date_start ||= DateTime.now - 28
+@date_end   ||= DateTime.now
+@top ||= 20
 
 
-date_start.step(date_end, hour_step).each do |d| 
-  
+puts "Getting Github statistics from #{@date_start} to #{@date_end}"
+
+
+@date_start.step(@date_end, hour_step).each do |d| 
+
   date_format = d.strftime('%F-%-k')
 
   gz = open( "http://data.githubarchive.org/#{date_format}.json.gz" )
@@ -41,12 +70,18 @@ date_start.step(date_end, hour_step).each do |d|
     repos[repo_name] += 1  if event_type == "WatchEvent"
     repos[repo_name] += 1  if event_type == "IssuesEvent" && event_action == "opened"
     
+    
   end
 
 end
 
+puts "Results (~#{15} seconds):"
+
+repos.sort_by { |k, v| v }.last(@top).reverse.each_with_index do |(repo, score), index|
+  
+  puts "##{index + 1}. #{repo}: #{score}"
+  
+end
+
+
 puts repos.count
-puts repos.sort_by { |k,v| v }.last(10).reverse
-
-
- 
